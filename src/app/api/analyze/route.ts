@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-const pdfParse = require("pdf-parse");
+
 
 export async function POST(req: Request) {
   try {
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       console.log("[POST /api/analyze] Processing PDF");
       try {
         const buffer = Buffer.from(body.fileData.data, "base64");
+        const pdfParse = (await import("pdf-parse")).default || (await import("pdf-parse"));
         const pdfData = await pdfParse(buffer);
         text = pdfData.text;
         
