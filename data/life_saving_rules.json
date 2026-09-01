@@ -1,0 +1,298 @@
+[
+  {
+    "rule_name": "Energy Isolation",
+    "description": "Verify isolation and zero energy state before starting work.",
+    "keywords": [
+      "isolate",
+      "isolation",
+      "lockout",
+      "tagout",
+      "loto",
+      "de-energize",
+      "electrical source",
+      "switch off",
+      "valve closed",
+      "live wire",
+      "live equipment",
+      "unexpected start-up",
+      "zero energy"
+    ],
+    "example_phrases": [
+      "electrical isolation was not verified",
+      "lockout not applied",
+      "isolation failed",
+      "not isolated",
+      "zero energy not confirmed"
+    ],
+    "typical_hazards": [
+      "Electrical shock",
+      "Stored mechanical energy release",
+      "Pressurized fluid discharge"
+    ],
+    "typical_failed_barriers": [
+      "Isolation not verified",
+      "LOTO tags missing",
+      "Zero energy state not confirmed",
+      "Physical lock not applied"
+    ]
+  },
+  {
+    "rule_name": "Confined Space",
+    "description": "Obtain authorization before entering a confined space.",
+    "keywords": [
+      "confined space",
+      "tank entry",
+      "vessel entry",
+      "manhole",
+      "gas test",
+      "gas testing",
+      "tank",
+      "vessel",
+      "oxygen level",
+      "standby person",
+      "toxic atmosphere",
+      "confined",
+      "enclosed vessel"
+    ],
+    "example_phrases": [
+      "vessel entry without gas testing",
+      "no gas test",
+      "oxygen not tested",
+      "no standby person",
+      "confined space entry without permit"
+    ],
+    "typical_hazards": [
+      "Toxic gas inhalation",
+      "Oxygen deficiency / asphyxiation",
+      "Engulfment or entrapment"
+    ],
+    "typical_failed_barriers": [
+      "Pre-entry gas testing not conducted",
+      "Standby person / hole watch missing",
+      "Confined space permit not obtained"
+    ]
+  },
+  {
+    "rule_name": "Hot Work",
+    "description": "Control flammables and ignition sources. Weld or spark only with authorization.",
+    "keywords": [
+      "welding",
+      "cutting",
+      "grinding",
+      "spark",
+      "flammable",
+      "hydrocarbon",
+      "gas monitoring",
+      "fire watch",
+      "combustible",
+      "ignition source",
+      "fuel",
+      "ignited",
+      "fire",
+      "hot"
+    ],
+    "example_phrases": [
+      "welding near hydrocarbon vapour",
+      "hot work permit missing",
+      "welding without fire watch",
+      "combustible material nearby"
+    ],
+    "typical_hazards": [
+      "Explosion of hydrocarbon vapors",
+      "Flash fire",
+      "Severe thermal burns"
+    ],
+    "typical_failed_barriers": [
+      "Fire watch standby missing",
+      "Hydrocarbon gas test not completed",
+      "Hot work permit not approved"
+    ]
+  },
+  {
+    "rule_name": "Line of Fire",
+    "description": "Keep yourself and others out of the line of fire.",
+    "keywords": [
+      "suspended load",
+      "below load",
+      "caught between",
+      "struck by",
+      "pinch point",
+      "moving equipment",
+      "pressure release",
+      "projectile",
+      "high pressure hose",
+      "tension wire",
+      "coupling",
+      "coupling guard",
+      "moving parts"
+    ],
+    "example_phrases": [
+      "standing below load",
+      "crane suspended load",
+      "struck by moving vehicle",
+      "pinch point hazard"
+    ],
+    "typical_hazards": [
+      "Impact from dropped objects",
+      "Crushing by heavy machinery",
+      "Sudden high-pressure release"
+    ],
+    "typical_failed_barriers": [
+      "Barricades and warning signs missing",
+      "Standing under a suspended load",
+      "Spotter not present for machinery movement"
+    ]
+  },
+  {
+    "rule_name": "Working at Height",
+    "description": "Protect yourself against falling when working at height.",
+    "keywords": [
+      "height",
+      "ladder",
+      "scaffold",
+      "platform",
+      "harness",
+      "fall protection",
+      "fall risk",
+      "elevated work",
+      "lanyard"
+    ],
+    "example_phrases": [
+      "no harness",
+      "no fall protection",
+      "working at height without lanyard anchor",
+      "unsecured ladder"
+    ],
+    "typical_hazards": [
+      "Fall from height to lower level",
+      "Dropped tools striking people below"
+    ],
+    "typical_failed_barriers": [
+      "Safety harness not worn or not anchored",
+      "Scaffold guardrails missing",
+      "Fall arrest system failed"
+    ]
+  },
+  {
+    "rule_name": "Driving",
+    "description": "Follow safe driving rules. Do not speed, ignore seatbelts, or use mobile devices.",
+    "keywords": [
+      "speeding",
+      "seat belt",
+      "reversing",
+      "pedestrian",
+      "mobile phone",
+      "spotter",
+      "vehicle",
+      "driving",
+      "collision"
+    ],
+    "example_phrases": [
+      "vehicle reversing near pedestrians",
+      "no spotter while reversing",
+      "speeding inside plant",
+      "seatbelt not worn"
+    ],
+    "typical_hazards": [
+      "Vehicle rollover",
+      "Pedestrian struck by vehicle",
+      "Head-on collision"
+    ],
+    "typical_failed_barriers": [
+      "Lack of reverse spotter/alarm",
+      "Speed limit compliance failure",
+      "Seatbelt not utilized"
+    ]
+  },
+  {
+    "rule_name": "Bypassing Safety Controls",
+    "description": "Obtain authorization before overriding or disabling safety controls.",
+    "keywords": [
+      "interlock",
+      "guard",
+      "alarm",
+      "bypass",
+      "override",
+      "disable",
+      "safety system",
+      "safety control",
+      "limit switch"
+    ],
+    "example_phrases": [
+      "interlock bypassed",
+      "guard removed",
+      "alarm disabled",
+      "safety control overridden"
+    ],
+    "typical_hazards": [
+      "Uncontrolled chemical release",
+      "Entanglement in rotating equipment",
+      "Unmonitored process runaway"
+    ],
+    "typical_failed_barriers": [
+      "Unauthorized bypass of safety interlock",
+      "Equipment guard removed and not replaced",
+      "Critical safety alarm disabled without MOC"
+    ]
+  },
+  {
+    "rule_name": "Safe Mechanical Lifting",
+    "description": "Plan lifting operations and control the area.",
+    "keywords": [
+      "crane",
+      "lifting",
+      "rigging",
+      "sling",
+      "hoist",
+      "shackle",
+      "derrick",
+      "load limit",
+      "lift plan"
+    ],
+    "example_phrases": [
+      "sling failure",
+      "improper lifting tackle",
+      "no lift plan",
+      "exceeded load limit"
+    ],
+    "typical_hazards": [
+      "Dropped load striking personnel",
+      "Crane tipping over",
+      "Lifting gear mechanical failure"
+    ],
+    "typical_failed_barriers": [
+      "Lift plan not prepared or followed",
+      "Lifting gear inspection tag expired",
+      "Exceeding Safe Working Load (SWL)"
+    ]
+  },
+  {
+    "rule_name": "Work Authorisation",
+    "description": "Work with a valid Work Permit and Job Safety Analysis (JSA).",
+    "keywords": [
+      "permit",
+      "ptw",
+      "jsa",
+      "job safety analysis",
+      "authorisation",
+      "authorization",
+      "toolbox talk",
+      "expired permit"
+    ],
+    "example_phrases": [
+      "permit missing",
+      "permit expired",
+      "work started without authorisation",
+      "job safety analysis missing"
+    ],
+    "typical_hazards": [
+      "Conflicting work activities in same area",
+      "Unprepared work crews encountering hazards"
+    ],
+    "typical_failed_barriers": [
+      "Work started without approved Permit to Work",
+      "Toolbox talk / JSA not conducted",
+      "Permit conditions not followed"
+    ]
+  }
+]
