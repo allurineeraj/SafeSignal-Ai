@@ -3,47 +3,81 @@ import { supabase } from "@/lib/supabase";
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     console.log("[POST /api/analyze] Request received");
 
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = (
+      process.env.GROQ_API_KEY ||
+      process.env.GROQ_KEY ||
+      process.env.NEXT_PUBLIC_GROQ_API_KEY ||
+      ""
+    )
+      .trim()
+      .replace(/^["']|["']$/g, "");
 
     if (!apiKey) {
       console.error(
-        "[POST /api/analyze] Missing GROQ_API_KEY environment variable"
+        "[POST /api/analyze] Missing GROQ_API_KEY in environment variables"
       );
 
       return NextResponse.json(
-        { error: "Missing API Key" },
+        {
+          error:
+            "Missing GROQ_API_KEY environment variable in Vercel settings. Please configure GROQ_API_KEY in your Vercel Project Settings.",
+        },
         { status: 500 }
       );
     }
 
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body." },
+        { status: 400 }
+      );
+    }
 
-    let text = body.text;
+    let text = body?.text;
 
     // ---------------------------------------------------------
     // PDF PROCESSING
     // ---------------------------------------------------------
 
-    if (body.fileData) {
-      console.log("[POST /api/analyze] Processing PDF");
+    if (body?.fileData) {
+      console.log("[POST /api/analyze] Processing PDF extraction");
       try {
         const buffer = Buffer.from(body.fileData.data, "base64");
-        const pdfParse = (await import("pdf-parse")).default || (await import("pdf-parse"));
-        const pdfData = await pdfParse(buffer);
-        text = pdfData.text;
+        const pdfModule: any = await import("pdf-parse");
+        let extractedText = "";
+
+        if (typeof pdfModule.PDFParse === "function") {
+          const parser = new pdfModule.PDFParse({ data: buffer });
+          const res = await parser.getText();
+          extractedText = typeof res === "string" ? res : (res?.text || "");
+        } else if (typeof pdfModule.default === "function") {
+          const res = await pdfModule.default(buffer);
+          extractedText = res?.text || "";
+        } else if (typeof pdfModule === "function") {
+          const res = await pdfModule(buffer);
+          extractedText = res?.text || "";
+        } else {
+          throw new Error("Unable to locate PDF parser function in module.");
+        }
+
+        text = (extractedText || "").trim();
         
-        if (!text || !text.trim()) {
-           throw new Error("Extracted PDF text is empty.");
+        if (!text) {
+          throw new Error("Extracted PDF text is empty.");
         }
       } catch (err: any) {
-        console.error("[POST /api/analyze] PDF Extraction error:", err);
+        console.error("[POST /api/analyze] PDF Extraction error:", err?.message || err);
         return NextResponse.json(
           {
-            error: "Failed to extract text from PDF: " + err.message,
+            error: "Failed to extract text from PDF: " + (err?.message || String(err)),
           },
           { status: 400 }
         );
@@ -56,7 +90,7 @@ export async function POST(req: Request) {
 
     if (!text || typeof text !== "string" || !text.trim()) {
       return NextResponse.json(
-        { error: "Missing text or fileData" },
+        { error: "Missing text or fileData in request body." },
         { status: 400 }
       );
     }
@@ -154,6 +188,7 @@ ${text}
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
+        cache: "no-store",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"

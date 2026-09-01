@@ -11,10 +11,15 @@ export async function GET() {
       .eq("report_status", "Pending HSE Review")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("[GET /api/queue] Database query failed:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     
-    return NextResponse.json(data);
+    return NextResponse.json(data || []);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[GET /api/queue] Unexpected error:", err);
+    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }
+

@@ -9,7 +9,9 @@ export async function GET() {
     const { data: preds, error: predsErr } = await supabase.from("ai_predictions").select("sif_label, priority, potential_consequence, hazard, life_saving_rules");
 
     if (reportsErr || predsErr) {
-      throw new Error("Failed to fetch analytics");
+      const errMessage = reportsErr?.message || predsErr?.message || "Failed to fetch analytics from database";
+      console.error("[GET /api/analytics] Supabase error:", errMessage);
+      return NextResponse.json({ error: errMessage }, { status: 500 });
     }
 
     const total = reports?.length || 0;
