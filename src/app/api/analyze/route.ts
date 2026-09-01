@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     console.log("[POST /api/analyze] Request received");
