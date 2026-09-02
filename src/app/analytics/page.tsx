@@ -11,7 +11,13 @@ export default function AnalyticsDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/analytics", { cache: "no-store" });
+        const res = await fetch(`/api/analytics?t=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        });
         const data = await res.json();
         setStats(data);
       } catch (e) {

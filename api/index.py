@@ -299,24 +299,27 @@ async def get_analytics():
         revs = r.get("hse_reviews")
         rev = revs[0] if isinstance(revs, list) and len(revs) > 0 else (revs if isinstance(revs, dict) else {})
         
-        status = r.get("report_status", "Submitted")
-        if status == "Closed":
+        status = r.get("report_status") or "Submitted"
+        rev_status = rev.get("review_status") or ""
+        is_closed = (status.lower() == "closed") or (rev_status.lower() == "closed")
+        
+        if is_closed:
             closed_count += 1
             closed_reports.append({
                 "id": r.get("id"),
                 "report_id": r.get("report_id"),
                 "report_type": r.get("report_type", "Report"),
-                "report_summary": ai.get("explanation") or r.get("report_summary") or r.get("original_text") or "Closed report",
+                "report_summary": ai.get("explanation") or r.get("report_summary") or rev.get("hse_comments") or r.get("original_text") or "Closed report",
                 "original_text": r.get("original_text"),
-                "review_priority": rev.get("final_priority") or r.get("review_priority") or ai.get("priority") or "Low",
-                "report_status": status,
+                "review_priority": (rev.get("final_priority") if rev.get("final_priority") and rev.get("final_priority") != "Unknown" else None) or r.get("review_priority") or ai.get("priority") or "Low",
+                "report_status": "Closed",
                 "reviewer_name": rev.get("reviewer_name") or "HSE Officer",
                 "hse_comments": rev.get("hse_comments") or "",
                 "created_at": r.get("created_at"),
                 "reviewed_at": rev.get("reviewed_at") or r.get("created_at")
             })
             
-        priority = rev.get("final_priority") or r.get("review_priority") or ai.get("priority") or "Low"
+        priority = (rev.get("final_priority") if rev.get("final_priority") and rev.get("final_priority") != "Unknown" else None) or r.get("review_priority") or ai.get("priority") or "Low"
         if priority in ["Critical", "High"]:
             critical_count += 1
         if priority in risk_levels:
@@ -324,7 +327,7 @@ async def get_analytics():
         else:
             risk_levels["Low"] += 1
             
-        sif_label = rev.get("final_sif_label") or ai.get("sif_label")
+        sif_label = (rev.get("final_sif_label") if rev.get("final_sif_label") and rev.get("final_sif_label") != "Unknown" else None) or ai.get("sif_label")
         if sif_label == "SIF-potential":
             sif_count += 1
             
