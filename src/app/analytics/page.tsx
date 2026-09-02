@@ -112,6 +112,77 @@ export default function AnalyticsDashboard() {
           )}
         </div>
       </div>
+
+      {/* CLOSED REPORTS & PROJECTS SECTION */}
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Closed Reports & Projects ({stats.closed_count || 0})
+          </h3>
+          <span className="text-xs text-slate-400">
+            Reports resolved and closed by the HSE team
+          </span>
+        </div>
+
+        {(!stats.closed_reports || stats.closed_reports.length === 0) ? (
+          <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-lg">
+            No closed reports yet. Reports closed in the HSE Review Queue will appear here.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-300">
+              <thead className="text-xs uppercase bg-slate-800/60 text-slate-400 border-b border-slate-700">
+                <tr>
+                  <th className="px-4 py-3">Report ID</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Summary / Description</th>
+                  <th className="px-4 py-3">Priority</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Closed / Reviewed Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {stats.closed_reports.map((cr: any) => (
+                  <tr key={cr.id || cr.report_id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-white">{cr.report_id}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                        {cr.report_type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-200 max-w-md truncate">
+                      {cr.report_summary}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                          cr.review_priority === "Critical"
+                            ? "bg-red-500/20 text-red-400 border-red-500/50"
+                            : cr.review_priority === "High"
+                            ? "bg-orange-500/20 text-orange-400 border-orange-500/50"
+                            : cr.review_priority === "Medium"
+                            ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
+                            : "bg-blue-500/20 text-blue-400 border-blue-500/50"
+                        }`}
+                      >
+                        {cr.review_priority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {cr.report_status || "Closed"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-400">
+                      {cr.reviewed_at ? new Date(cr.reviewed_at).toLocaleDateString() : (cr.created_at ? new Date(cr.created_at).toLocaleDateString() : "—")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

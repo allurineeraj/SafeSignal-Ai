@@ -189,9 +189,10 @@ async def get_queue():
 
 class ReviewRequest(BaseModel):
     report_id: str
-    reviewer_name: str
-    action: str  # Accept, Correct, Reject, Duplicate
-    corrections: dict = None
+    reviewer_name: str = "HSE Officer"
+    action: str  # Accept, Assign Action, Correct, Close, Reject, Duplicate
+    corrections: Optional[dict] = None
+    corrective_action: Optional[dict] = None
     comments: str = ""
 
 @app.post("/api/review")
@@ -201,36 +202,74 @@ async def submit_review(req: ReviewRequest):
     # 1. Map action to status
     status_map = {
         "Accept": "Accepted",
+        "Assign Action": "Action Assigned",
+        "Action Assigned": "Action Assigned",
         "Correct": "Corrected",
-        "Reject": "Rejected",
-        "Duplicate": "Duplicate"
+        "Close": "Closed",
+        "Reject": "Closed",
+        "Duplicate": "Closed"
     }
     new_status = status_map.get(req.action, "Pending HSE Review")
+    if req.action == "Accept" and req.corrective_action and req.corrective_action.get("action_plan", "").strip():
+        new_status = "Action Assigned"
     
-    # 2. Update report status
-    supabase.table("reports").update({"report_status": new_status}).eq("report_id", req.report_id).execute()
-    
-    # 3. Create hse_review entry
     c = req.corrections or {}
+
+    # 2. Update report status and review_priority on reports table
+    report_updates = {"report_status": new_status}
+    if c.get("priority"):
+        report_updates["review_priority"] = c["priority"]
+        
+    supabase.table("reports").update(report_updates).eq("report_id", req.report_id).execute()
+    
+    # 3. Format life saving rules
+    rules_val = c.get("life_saving_rules")
+    rules_json = json.dumps(rules_val) if isinstance(rules_val, list) else (rules_val if isinstance(rules_val, str) else json.dumps([]))
+
+    # 4. Upsert hse_review entry
     review_data = {
         "report_id": req.report_id,
-        "reviewer_name": req.reviewer_name,
+        "reviewer_name": req.reviewer_name or "HSE Officer",
         "review_status": new_status,
-        "hse_comments": req.comments,
-        "final_sif_label": c.get("sif_label", "Unknown"),
-        "final_priority": c.get("priority", "Unknown"),
+        "hse_comments": req.comments or ("Report closed by HSE Officer" if new_status == "Closed" else ""),
+        "final_sif_label": c.get("sif_label", "Non-SIF"),
+        "final_priority": c.get("priority", "Medium"),
         "final_activity": c.get("activity", ""),
         "final_hazard": c.get("hazard", ""),
         "final_energy_source": c.get("energy_source", ""),
         "final_exposure": c.get("exposure", ""),
         "final_failed_barrier": c.get("failed_barrier", ""),
-        "final_potential_consequence": c.get("potential_consequence", ""),
-        "final_life_saving_rules": json.dumps(c.get("life_saving_rules", [])),
+        "final_potential_consequence": c.get("precursor_pattern") or c.get("potential_consequence", ""),
+        "final_life_saving_rules": rules_json,
         "final_actual_injury": c.get("actual_injury", "")
     }
-    supabase.table("hse_reviews").insert(review_data).execute()
+    supabase.table("hse_reviews").upsert(review_data, on_conflict="report_id").execute()
     
-    return {"success": True, "new_status": new_status}
+    # 5. Update ai_predictions if corrections provided
+    if any(k in c for k in ["hazard", "priority", "sif_label", "precursor_pattern", "life_saving_rules", "summary"]):
+        pred_updates = {}
+        if c.get("hazard"): pred_updates["hazard"] = c["hazard"]
+        if c.get("priority"): pred_updates["priority"] = c["priority"]
+        if c.get("sif_label"): pred_updates["sif_label"] = c["sif_label"]
+        if c.get("precursor_pattern"): pred_updates["potential_consequence"] = c["precursor_pattern"]
+        if rules_json: pred_updates["life_saving_rules"] = rules_json
+        if c.get("summary"): pred_updates["explanation"] = c["summary"]
+        supabase.table("ai_predictions").update(pred_updates).eq("report_id", req.report_id).execute()
+
+    # 6. Insert Corrective Action if provided
+    if req.corrective_action and req.corrective_action.get("action_plan", "").strip():
+        ca = req.corrective_action
+        supabase.table("corrective_actions").insert({
+            "report_id": req.report_id,
+            "action_plan": ca.get("action_plan", "").strip(),
+            "responsible_department": ca.get("responsible_department", "Safety & HSE"),
+            "assigned_to": ca.get("assigned_to", "Unassigned"),
+            "priority": ca.get("priority") or c.get("priority", "Medium"),
+            "target_date": ca.get("target_date") or datetime.now().strftime("%Y-%m-%d"),
+            "status": ca.get("status", "Assigned")
+        }).execute()
+
+    return {"success": True, "report_id": req.report_id, "new_status": new_status}
 
 # ==========================================
 # ANALYTICS
@@ -239,25 +278,107 @@ async def submit_review(req: ReviewRequest):
 async def get_analytics():
     if not supabase: return {"error": "Database not connected"}
     
-    # Get total
-    reports = supabase.table("reports").select("report_status, review_priority, id").execute().data
+    res = supabase.table("reports").select("*, ai_predictions(*), hse_reviews(*)").order("created_at", desc=True).execute()
+    reports = res.data or []
     
     total = len(reports)
-    critical = len([r for r in reports if r["review_priority"] == "Critical"])
-    closed = len([r for r in reports if r["report_status"] == "Closed"])
+    critical_count = 0
+    closed_count = 0
+    sif_count = 0
     
-    # AI Predictions for SIF counts
-    preds = supabase.table("ai_predictions").select("sif_label").execute().data
-    sif_count = len([p for p in preds if p["sif_label"] == "SIF-potential"])
+    hazards = {}
+    precursors = {}
+    risk_levels = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    report_types = {}
+    life_saving_rules = {}
+    closed_reports = []
     
+    for r in reports:
+        preds = r.get("ai_predictions")
+        ai = preds[0] if isinstance(preds, list) and len(preds) > 0 else (preds if isinstance(preds, dict) else {})
+        revs = r.get("hse_reviews")
+        rev = revs[0] if isinstance(revs, list) and len(revs) > 0 else (revs if isinstance(revs, dict) else {})
+        
+        status = r.get("report_status", "Submitted")
+        if status == "Closed":
+            closed_count += 1
+            closed_reports.append({
+                "id": r.get("id"),
+                "report_id": r.get("report_id"),
+                "report_type": r.get("report_type", "Report"),
+                "report_summary": ai.get("explanation") or r.get("report_summary") or r.get("original_text") or "Closed report",
+                "original_text": r.get("original_text"),
+                "review_priority": rev.get("final_priority") or r.get("review_priority") or ai.get("priority") or "Low",
+                "report_status": status,
+                "reviewer_name": rev.get("reviewer_name") or "HSE Officer",
+                "hse_comments": rev.get("hse_comments") or "",
+                "created_at": r.get("created_at"),
+                "reviewed_at": rev.get("reviewed_at") or r.get("created_at")
+            })
+            
+        priority = rev.get("final_priority") or r.get("review_priority") or ai.get("priority") or "Low"
+        if priority in ["Critical", "High"]:
+            critical_count += 1
+        if priority in risk_levels:
+            risk_levels[priority] += 1
+        else:
+            risk_levels["Low"] += 1
+            
+        sif_label = rev.get("final_sif_label") or ai.get("sif_label")
+        if sif_label == "SIF-potential":
+            sif_count += 1
+            
+        rtype = r.get("report_type", "Manual/CSV Input")
+        report_types[rtype] = report_types.get(rtype, 0) + 1
+        
+        h = rev.get("final_hazard") or ai.get("hazard")
+        if h and h not in ["Not identified", "None", "Hazard not identified"]:
+            hazards[h] = hazards.get(h, 0) + 1
+            
+        p = rev.get("final_potential_consequence") or ai.get("potential_consequence") or ai.get("precursor_pattern")
+        if p and p not in ["Not identified", "None"]:
+            precursors[p] = precursors.get(p, 0) + 1
+            
+        raw_rules = rev.get("final_life_saving_rules") or ai.get("life_saving_rules")
+        if raw_rules:
+            rules_list = []
+            if isinstance(raw_rules, list):
+                rules_list = raw_rules
+            elif isinstance(raw_rules, str) and raw_rules.strip():
+                try:
+                    parsed = json.loads(raw_rules)
+                    if isinstance(parsed, list):
+                        rules_list = parsed
+                    elif isinstance(parsed, str):
+                        rules_list = [parsed]
+                except Exception:
+                    rules_list = [raw_rules.strip()]
+            for rule in rules_list:
+                rule_str = str(rule).strip()
+                if rule_str and rule_str not in ["No applicable rule", "[]", "None", "null"]:
+                    life_saving_rules[rule_str] = life_saving_rules.get(rule_str, 0) + 1
+                    
+    top_precursor = "None"
+    top_precursor_count = 0
+    for k, v in precursors.items():
+        if v > top_precursor_count:
+            top_precursor = k
+            top_precursor_count = v
+            
     sif_percentage = round((sif_count / total * 100) if total > 0 else 0, 1)
     
     return {
         "total_reports": total,
         "sif_count": sif_count,
-        "critical_count": critical,
-        "closed_count": closed,
+        "critical_count": critical_count,
+        "closed_count": closed_count,
         "sif_percentage": sif_percentage,
-        "highest_risk_site": "Demo Site",
-        "most_freq_rule": "Working at Height" # Simplified for speed
+        "hazards": hazards,
+        "precursors": precursors,
+        "riskLevels": risk_levels,
+        "reportTypes": report_types,
+        "lifeSavingRules": life_saving_rules,
+        "topPrecursor": top_precursor,
+        "topPrecursorCount": top_precursor_count,
+        "closed_reports": closed_reports
     }
